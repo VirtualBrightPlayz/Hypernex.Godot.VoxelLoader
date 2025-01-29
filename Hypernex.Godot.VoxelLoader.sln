@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hypernex.Godot.VoxelLoader", "Hypernex.Godot.VoxelLoader.csproj", "{7AD916CA-834C-CA94-F5D9-1CBDB3D6E409}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7AD916CA-834C-CA94-F5D9-1CBDB3D6E409}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AD916CA-834C-CA94-F5D9-1CBDB3D6E409}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AD916CA-834C-CA94-F5D9-1CBDB3D6E409}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AD916CA-834C-CA94-F5D9-1CBDB3D6E409}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6D1851C1-A285-4362-935F-E94C7CA63A6F}
+	EndGlobalSection
+EndGlobal
