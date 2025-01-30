@@ -70,8 +70,9 @@ public partial class FileVoxelWorld : VoxelWorld
                 {
                     int index = (y * length + z) * width + x;
                     Vector3I vpos = new Vector3I(x, y, z);
-                    SpawnOrGetChunk(FloorPosition(vpos));
-                    if (TryGetVoxel(vpos, out Voxel vox))
+                    Chunk chunk = SpawnOrGetChunk(FloorPosition(vpos));
+                    Vector3I voxPos = vpos - UnroundPosition(chunk.chunkPosition);
+                    if (chunk.TryGetVoxel(voxPos.X, voxPos.Y, voxPos.Z, out Voxel vox))
                     {
                         if (blocks[index] < materials.Count)
                         {
@@ -82,7 +83,7 @@ public partial class FileVoxelWorld : VoxelWorld
                             vox.Id = 0;
                             GD.PrintErr($"{x} {y} {z} {blocks[index]}");
                         }
-                        SetVoxelWithData(vpos, vox);
+                        SetVoxelWithData(chunk, voxPos, vox);
                     }
                 }
     }

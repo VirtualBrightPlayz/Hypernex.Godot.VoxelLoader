@@ -269,6 +269,13 @@ public partial class VoxelWorld : Node
         }
     }
 
+    // pos in world space
+    public void SetVoxelWithData(Chunk mesh, Vector3I pos, Voxel voxel)
+    {
+        Vector3I voxelPos = pos;
+        mesh.SetVoxel(voxelPos.X, voxelPos.Y, voxelPos.Z, SetVoxelData(voxel, UnroundPosition(mesh.chunkPosition) + pos));
+    }
+
     public virtual Voxel SetVoxelData(Voxel vox, Vector3I pos)
     {
         return vox;
