@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Godot;
+using Mutex = System.Threading.Mutex;
 
 public class VoxelMesh
 {
@@ -16,7 +19,6 @@ public class VoxelMesh
     private ArrayMesh mesh;
     private ConcavePolygonShape3D shape;
     private Material[] materials = new Material[0];
-    public bool isUpdating { get; private set; } = false;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct ChunkVertex
@@ -182,63 +184,62 @@ public class VoxelMesh
 
     public ConcavePolygonShape3D GetShape()
     {
+        shape.SetFaces(mesh.GetFaces());
         return shape;
     }
 
-    public async Task UpdateMeshAsync()
+    public bool UpdateMesh()
     {
-        if (isUpdating || mesh == null || chunk == null)
+        try
         {
-            return;
-        }
-        isUpdating = true;
-        verts.Clear();
-        normals.Clear();
-        trisLookup.Clear();
-        uvs.Clear();
-        colors.Clear();
-        // verts.Capacity = Chunk.SIZE * Chunk.SIZE * Chunk.SIZE;
-        // uvs.Capacity = Chunk.SIZE * Chunk.SIZE * Chunk.SIZE;
-        await Task.Run(AddChunk);
-        SurfaceTool st = new SurfaceTool();
-        ArrayMesh amesh = new ArrayMesh();
-        await Task.Run(() =>
-        {
+            verts.Clear();
+            normals.Clear();
+            trisLookup.Clear();
+            uvs.Clear();
+            colors.Clear();
+            AddChunk();
+            SurfaceTool st = new SurfaceTool();
+            ArrayMesh amesh = new ArrayMesh();
+            {
+                foreach (var id in trisLookup.Keys)
+                {
+                    st.Begin(Mesh.PrimitiveType.Triangles);
+                    for (int i = 0; i < verts.Count; i++)
+                    {
+                        st.SetColor(colors[i]);
+                        st.SetUV(uvs[i]);
+                        st.SetNormal(normals[i]);
+                        st.AddVertex(verts[i]);
+                    }
+                    for (int i = 0; i < trisLookup[id].Count; i++)
+                    {
+                        st.AddIndex(trisLookup[id][i]);
+                    }
+                    amesh = st.Commit(amesh);
+                }
+            }
+            Material[] tempList = new Material[trisLookup.Count];
+            int i2 = 0;
             foreach (var id in trisLookup.Keys)
             {
-                st.Begin(Mesh.PrimitiveType.Triangles);
-                for (int i = 0; i < verts.Count; i++)
-                {
-                    st.SetColor(colors[i]);
-                    st.SetUV(uvs[i]);
-                    st.SetNormal(normals[i]);
-                    st.AddVertex(verts[i]);
-                }
-                for (int i = 0; i < trisLookup[id].Count; i++)
-                {
-                    st.AddIndex(trisLookup[id][i]);
-                }
-                amesh = st.Commit(amesh);
+                if (id >= 0 && id < world.materials.Count)
+                    tempList[i2++] = world.materials[id];
+                else
+                    i2++;
             }
-        });
-        mesh = amesh;
-        shape.SetFaces(mesh.GetFaces());
-        Material[] tempList = new Material[trisLookup.Count];
-        int i2 = 0;
-        foreach (var id in trisLookup.Keys)
-        {
-            if (id >= 0 && id < world.materials.Count)
-                tempList[i2++] = world.materials[id];
-            else
-                i2++;
+            materials = tempList;
+            for (int i = 0; i < Mathf.Min(materials.Length, amesh.GetSurfaceCount()); i++)
+            {
+                amesh.SurfaceSetMaterial(i, materials[i]);
+            }
+            chunk.shouldUpdate = Mathf.Max(chunk.shouldUpdate - 1, 0);
+
+            mesh = amesh;
         }
-        materials = tempList;
-        for (int i = 0; i < Mathf.Min(materials.Length, mesh.GetSurfaceCount()); i++)
+        finally
         {
-            mesh.SurfaceSetMaterial(i, materials[i]);
         }
-        isUpdating = false;
-        chunk.shouldUpdate = Mathf.Max(chunk.shouldUpdate - 1, 0);
+        return true;
     }
 
     public VoxelMesh(VoxelWorld wo, Chunk ch)
@@ -247,7 +248,5 @@ public class VoxelMesh
         shape = new ConcavePolygonShape3D();
         world = wo;
         chunk = ch;
-        isUpdating = false;
-        chunk.QueueUpdateMesh();
     }
 }

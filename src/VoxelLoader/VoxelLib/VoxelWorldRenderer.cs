@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 
@@ -11,11 +13,49 @@ public partial class VoxelWorldRenderer : StaticBody3D
     private List<MeshInstance3D> instances = new List<MeshInstance3D>();
     private List<CollisionShape3D> colliders = new List<CollisionShape3D>();
     private List<Chunk> chunks = new List<Chunk>();
+    private ConcurrentQueue<VoxelMesh> meshesToMesh = new ConcurrentQueue<VoxelMesh>();
+    private ConcurrentQueue<VoxelMesh> meshesToUpdate = new ConcurrentQueue<VoxelMesh>();
     private int chunkCount;
     [Export]
     public int renderDistance = 8;
     private Camera3D cam;
     public Vector3I lastPosition = Vector3I.One * 100;
+    private Thread thread;
+    private bool isRunning = false;
+
+    public override void _EnterTree()
+    {
+        RequestReady();
+    }
+
+    public override void _Ready()
+    {
+        isRunning = true;
+        thread = new Thread(MeshingThread);
+        thread.Start();
+    }
+
+    public override void _ExitTree()
+    {
+        isRunning = false;
+        thread?.Join();
+    }
+
+    public void MeshingThread()
+    {
+        while (IsInstanceValid(this) && isRunning)
+        {
+            if (meshesToMesh.TryDequeue(out VoxelMesh mesh))
+            {
+                while (!mesh.UpdateMesh())
+                {
+                    Thread.Yield();
+                }
+                meshesToUpdate.Enqueue(mesh);
+            }
+            Thread.Yield();
+        }
+    }
 
     public override void _Process(double delta)
     {
@@ -63,19 +103,19 @@ public partial class VoxelWorldRenderer : StaticBody3D
                             meshes.Add(mesh);
                             MeshInstance3D instance = new MeshInstance3D()
                             {
-                                Mesh = mesh.GetMesh(),
+                                // Mesh = mesh.GetMesh(),
                                 Position = VoxelWorld.UnroundPosition(chunk.chunkPosition),
                             };
                             AddChild(instance);
                             instances.Add(instance);
                             CollisionShape3D collider = new CollisionShape3D()
                             {
-                                Shape = mesh.GetShape(),
+                                // Shape = mesh.GetShape(),
                                 Position = VoxelWorld.UnroundPosition(chunk.chunkPosition),
                             };
                             AddChild(collider);
                             colliders.Add(collider);
-                            _ = mesh.UpdateMeshAsync();
+                            meshesToMesh.Enqueue(mesh);
                         }
                     }
             chunkCount = chunks.Count;
@@ -83,9 +123,20 @@ public partial class VoxelWorldRenderer : StaticBody3D
         for (int i = 0; i < chunkCount; i++)
         {
             if (chunks[i].shouldUpdate > 0)
-                _ = meshes[i].UpdateMeshAsync();
-            instances[i].Mesh = meshes[i].GetMesh();
-            colliders[i].Shape = meshes[i].GetShape();
+            {
+                meshesToMesh.Enqueue(meshes[i]);
+                chunks[i].shouldUpdate = Mathf.Max(chunks[i].shouldUpdate - 1, 0);
+                // chunks[i].shouldUpdate = 0;
+            }
+        }
+        if (meshesToUpdate.TryDequeue(out VoxelMesh vmesh))
+        {
+            int i = meshes.IndexOf(vmesh);
+            if (i != -1)
+            {
+                instances[i].Mesh = vmesh.GetMesh();
+                colliders[i].Shape = vmesh.GetShape();
+            }
         }
         lastPosition = camChunkPos;
     }

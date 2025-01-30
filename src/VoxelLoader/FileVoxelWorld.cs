@@ -85,10 +85,6 @@ public partial class FileVoxelWorld : VoxelWorld
                         SetVoxelWithData(vpos, vox);
                     }
                 }
-        foreach (var ch in chunks)
-        {
-            ch.Value.QueueUpdateMesh();
-        }
     }
 
     public override Voxel SetVoxelData(Voxel vox, Vector3I pos)
@@ -122,9 +118,5 @@ public partial class FileVoxelWorld : VoxelWorld
             }
         }
         txt.Read(worldTxt, Vector3I.Zero, this);
-        foreach (var ch in chunks)
-        {
-            ch.Value.QueueUpdateMesh();
-        }
     }
 }

@@ -130,8 +130,12 @@ public partial class VoxelWorld : Node
 
     public bool IsFaceVisible(Chunk chunk, int x, int y, int z, byte layer)
     {
-        Vector3I position = UnroundPosition(chunk.chunkPosition);
-        return IsFaceVisible(position.X + x, position.Y + y, position.Z + z, layer);
+        if (!chunk.TryGetVoxel(x, y, z, out Voxel vox))
+        {
+            Vector3I position = UnroundPosition(chunk.chunkPosition);
+            return IsFaceVisible(position.X + x, position.Y + y, position.Z + z, layer);
+        }
+        return !vox.IsActive || layer != vox.Layer;
     }
 
     public bool IsFaceVisible(int x, int y, int z, byte layer)
